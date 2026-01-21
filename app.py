@@ -4,16 +4,27 @@ from db_manager import get_db, init_db
 
 app = Flask(__name__)
 
+# This ensures the database and tables are created as soon as Render starts the app
+with app.app_context():
+    init_db()
+
 @app.route('/')
 def dashboard():
     conn = get_db()
-    stats = {
-        'p': conn.execute("SELECT COUNT(*) FROM patients").fetchone()[0],
-        'd': conn.execute("SELECT COUNT(*) FROM doctors").fetchone()[0],
-        'r': conn.execute("SELECT SUM(amount) FROM bills").fetchone()[0] or 0
-    }
-    items = conn.execute("SELECT * FROM inventory LIMIT 5").fetchall()
-    conn.close()
+    try:
+        stats = {
+            # Added 'or 0' to prevent crashes if the database is empty
+            'p': conn.execute("SELECT COUNT(*) FROM patients").fetchone()[0] or 0,
+            'd': conn.execute("SELECT COUNT(*) FROM doctors").fetchone()[0] or 0,
+            'r': conn.execute("SELECT SUM(amount) FROM bills").fetchone()[0] or 0
+        }
+        items = conn.execute("SELECT * FROM inventory LIMIT 5").fetchall()
+    except Exception as e:
+        print(f"Dashboard Error: {e}")
+        stats = {'p': 0, 'd': 0, 'r': 0}
+        items = []
+    finally:
+        conn.close()
     return render_template('dashboard.html', stats=stats, items=items)
 
 @app.route('/patients', methods=['GET', 'POST'])
@@ -34,10 +45,13 @@ def appointments():
         conn.execute("INSERT INTO appointments (p_id, d_id, date) VALUES (?,?,?)",
                      (request.form['p_id'], request.form['d_id'], request.form['date']))
         conn.commit()
+    
+    # Joining tables to show names instead of IDs
     data = conn.execute('''SELECT a.id, p.name as p_name, d.name as d_name, a.date 
                            FROM appointments a 
                            JOIN patients p ON a.p_id = p.id 
                            JOIN doctors d ON a.d_id = d.id''').fetchall()
+    
     patients_list = conn.execute("SELECT * FROM patients").fetchall()
     doctors_list = conn.execute("SELECT * FROM doctors").fetchall()
     conn.close()
@@ -55,6 +69,7 @@ def inventory():
             item_id = request.form.get('item_id')
             conn.execute("DELETE FROM inventory WHERE id = ?", (item_id,))
         conn.commit()
+    
     items = conn.execute("SELECT * FROM inventory").fetchall()
     conn.close()
     return render_template('inventory.html', items=items)
@@ -67,11 +82,9 @@ def billing():
                      (request.form['p_name'], request.form['amount']))
         conn.commit()
     
-    # Get all past billing history
     data = conn.execute("SELECT * FROM bills ORDER BY id DESC").fetchall()
     
-    # UPDATED LOGIC: Only fetch patients who HAVE an appointment BUT do NOT have a bill yet.
-    # This ensures the same patient cannot be billed twice for the same visit.
+    # Filter: Show only patients who have an appointment but have not been billed yet
     active_appts = conn.execute('''
         SELECT p.name as p_name, d.fee as doctor_fee 
         FROM appointments a
@@ -85,6 +98,6 @@ def billing():
     return render_template('billing.html', data=data, appointments=active_appts)
 
 if __name__ == "__main__":
-    init_db()
+    # Render requires the port to be read from Environment Variables
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port)
