@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Pharmacy - Nagar Civil Hospital</title>
+    <style>
+        .sidebar { height: 100vh; background: #2c3e50; color: white; padding-top: 20px; position: fixed; width: inherit; }
+        .sidebar a { color: white; text-decoration: none; display: block; padding: 10px 20px; }
+        .sidebar a:hover { background: #34495e; }
+        .main-content { margin-left: 16.66667%; padding: 30px; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid">
+        <div class="row">
+           <nav class="col-md-2 sidebar d-none d-md-block">
+    <h4 class="text-center px-2 py-3">Saideep</h4>
+    <hr>
+    <a href="/">🏠 Dashboard</a>
+    <a href="/patients">👥 Patients</a>
+    <a href="/appointments">📅 Appointments</a>
+    <a href="/inventory">💊 Pharmacy</a> <a href="/billing">💰 Billing</a>
+</nav>
+
+            <main class="col-md-10 main-content">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Pharmacy Inventory</h2>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMedModal">+ Add Medicine</button>
+                </div>
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Medicine Name</th>
+                                    <th>Stock</th>
+                                    <th>Price (₹)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td>{{ item.id }}</td>
+                                    <td><strong>{{ item.item }}</strong></td>
+                                    <td>
+                                        <span class="badge {% if item.stock < 10 %}bg-danger{% else %}bg-success{% endif %}">
+                                            {{ item.stock }} units
+                                        </span>
+                                    </td>
+                                    <td>₹{{ item.price }}</td>
+                                    <td>
+                                        <form action="/inventory" method="POST" style="display:inline;">
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="item_id" value="{{ item.id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this item?')">🗑 Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="modal fade" id="addMedModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form action="/inventory" method="POST">
+                                <input type="hidden" name="action" value="add">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Add New Medicine</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3"><label class="form-label">Medicine Name</label>
+                                        <input type="text" name="item" class="form-control" required></div>
+                                    <div class="mb-3"><label class="form-label">Initial Stock</label>
+                                        <input type="number" name="stock" class="form-control" required></div>
+                                    <div class="mb-3"><label class="form-label">Price per Unit (₹)</label>
+                                        <input type="number" step="0.01" name="price" class="form-control" required></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="submit" class="btn btn-primary w-100">Save to Inventory</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
